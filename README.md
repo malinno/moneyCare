@@ -234,10 +234,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 📞 Liên hệ
 
-- Email: support@moneycare.com
-- Website: https://moneycare.com
-- GitHub: https://github.com/moneycare/app
+- Email: adatx100@gmail.com
+- Phone:0337185649
 
 ---
 
-Made with ❤️ by MoneyCare Team
+Nguyễn Văn Đạt
