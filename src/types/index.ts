@@ -20,11 +20,8 @@ export interface LoginCredentials {
 }
 
 export interface RegisterData {
-  email: string;
+  username: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  phoneNumber?: string;
 }
 
 export interface AuthState {
@@ -161,6 +158,10 @@ export type RootStackParamList = {
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  Welcome: undefined;
+  IntroJars: undefined;
+  SelectFund: undefined;
+  Income: undefined;
   ForgotPassword: undefined;
   ResetPassword: { token: string };
 };
@@ -168,8 +169,9 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Transactions: undefined;
-  Budgets: undefined;
-  Analytics: undefined;
+  AddTransaction: undefined;
+  EditTransaction: { transaction: Transaction };
+  Statistics: undefined;
   Profile: undefined;
 };
 

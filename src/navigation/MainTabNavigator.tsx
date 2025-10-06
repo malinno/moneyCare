@@ -1,15 +1,16 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@contexts/ThemeContext';
-import { MainTabParamList } from '@types/index';
-import { HomeScreen } from '@screens/main/HomeScreen';
-
-// Placeholder screens - will be implemented later
-const TransactionsScreen = () => null;
-const BudgetsScreen = () => null;
-const AnalyticsScreen = () => null;
-const ProfileScreen = () => null;
+import React from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { TouchableOpacity, View } from "react-native";
+import { useTheme } from "@contexts/ThemeContext";
+import { MainTabParamList } from "@/types/index";
+import {
+  HomeScreen,
+  TransactionScreen,
+  EditTransactionScreen,
+  StatisticsScreen,
+  ProfileScreen,
+} from "@screens/main";
+import { TabIcon } from "@components/common/TabIcon";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -20,43 +21,47 @@ export const MainTabNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
+        tabBarIcon: ({ focused, size }) => {
+          let iconName: "home" | "thu_chi" | "thong_ke" | "user" | "add";
 
           switch (route.name) {
-            case 'Home':
-              iconName = focused ? 'home' : 'home-outline';
+            case "Home":
+              iconName = "home";
               break;
-            case 'Transactions':
-              iconName = focused ? 'list' : 'list-outline';
+            case "Transactions":
+              iconName = "thu_chi";
               break;
-            case 'Budgets':
-              iconName = focused ? 'pie-chart' : 'pie-chart-outline';
+            case "AddTransaction":
+              iconName = "add";
               break;
-            case 'Analytics':
-              iconName = focused ? 'analytics' : 'analytics-outline';
+            case "Statistics":
+              iconName = "thong_ke";
               break;
-            case 'Profile':
-              iconName = focused ? 'person' : 'person-outline';
+            case "Profile":
+              iconName = "user";
               break;
             default:
-              iconName = 'home-outline';
+              iconName = "home";
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <TabIcon name={iconName} focused={focused} size={size} />;
         },
         tabBarActiveTintColor: theme.colors.primary[500],
         tabBarInactiveTintColor: theme.colors.neutral.mountainMist,
         tabBarStyle: {
-          backgroundColor: theme.colors.background.primary,
+          backgroundColor: theme.colors.background.flashWhite,
           borderTopColor: theme.colors.border.light,
-          paddingBottom: 8,
+          paddingBottom: 10,
           paddingTop: 8,
           height: 60,
+          position: "absolute",
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '500',
+          fontWeight: "500",
         },
       })}
     >
@@ -64,35 +69,68 @@ export const MainTabNavigator: React.FC = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Trang chủ',
+          tabBarLabel: "Trang chủ",
         }}
       />
       <Tab.Screen
         name="Transactions"
-        component={TransactionsScreen}
+        component={TransactionScreen}
         options={{
-          tabBarLabel: 'Giao dịch',
+          tabBarLabel: "Thu - chi",
         }}
       />
       <Tab.Screen
-        name="Budgets"
-        component={BudgetsScreen}
+        name="AddTransaction"
+        component={TransactionScreen} // Placeholder for now
         options={{
-          tabBarLabel: 'Ngân sách',
+          tabBarLabel: "",
+          tabBarButton: (props) => {
+            const { onPress, ...restProps } = props;
+            return (
+              <TouchableOpacity
+                onPress={onPress}
+                style={{
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: "#3B82F6",
+                  borderRadius: 35,
+                  width: 60,
+                  height: 60,
+                  marginTop: -30,
+                  shadowColor: "#3B82F6",
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                  borderWidth: 3,
+                  borderColor: "#FFFFFF",
+                }}
+              >
+                <TabIcon name="add" focused={true} size={28} />
+              </TouchableOpacity>
+            );
+          },
         }}
       />
       <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
+        name="Statistics"
+        component={StatisticsScreen}
         options={{
-          tabBarLabel: 'Phân tích',
+          tabBarLabel: "Thống kê",
         }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarLabel: 'Hồ sơ',
+          tabBarLabel: "Cá nhân",
+        }}
+      />
+      <Tab.Screen
+        name="EditTransaction"
+        component={EditTransactionScreen}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
         }}
       />
     </Tab.Navigator>
