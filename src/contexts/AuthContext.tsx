@@ -1,16 +1,16 @@
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState, AppDispatch } from '@store/index';
-import { getCurrentUser, clearAuth } from '@store/slices/authSlice';
-import { authService } from '@services/auth/authService';
-import { User } from '@types/index';
+import React, { createContext, useContext, useEffect, ReactNode } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState, AppDispatch } from "@store/index";
+import { getCurrentUser, clearAuth } from "@store/slices/authSlice";
+import { fakeAuthService } from "@services/auth/fakeAuthService";
+import { User } from "@types/index";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   register: (userData: any) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -24,7 +24,9 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { user, isAuthenticated, isLoading, error } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated, isLoading, error } = useSelector(
+    (state: RootState) => state.auth
+  );
 
   useEffect(() => {
     checkAuthStatus();
@@ -32,43 +34,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const isAuth = await authService.isAuthenticated();
+      const isAuth = await fakeAuthService.isAuthenticated();
       if (isAuth) {
         dispatch(getCurrentUser());
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error("Auth check failed:", error);
       dispatch(clearAuth());
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
-      await authService.login({ email, password });
+      await fakeAuthService.login({ email: username, password });
       dispatch(getCurrentUser());
     } catch (error: any) {
-      throw new Error(error.message || 'Login failed');
+      throw new Error(error.message || "Login failed");
     }
   };
 
   const register = async (userData: any) => {
     try {
-      await authService.register(userData);
+      await fakeAuthService.register(userData);
       dispatch(getCurrentUser());
     } catch (error: any) {
-      throw new Error(error.message || 'Registration failed');
+      throw new Error(error.message || "Registration failed");
     }
   };
 
   const logout = async () => {
     try {
-      const refreshToken = await authService.getStoredUser();
+      const refreshToken = await fakeAuthService.getStoredUser();
       if (refreshToken) {
-        await authService.logout(refreshToken as any);
+        await fakeAuthService.logout(refreshToken as any);
       }
       dispatch(clearAuth());
     } catch (error: any) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
       dispatch(clearAuth());
     }
   };
@@ -77,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch(getCurrentUser());
     } catch (error: any) {
-      console.error('Refresh user error:', error);
+      console.error("Refresh user error:", error);
     }
   };
 
@@ -98,7 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

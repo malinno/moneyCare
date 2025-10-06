@@ -1,6 +1,6 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AuthState, User, LoginCredentials, RegisterData } from '@types/index';
-import { authService } from '@services/auth/authService';
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { AuthState, User, LoginCredentials, RegisterData } from "@/types";
+import { fakeAuthService } from "@services/auth/fakeAuthService";
 
 // Initial state
 const initialState: AuthState = {
@@ -14,99 +14,102 @@ const initialState: AuthState = {
 
 // Async thunks
 export const loginUser = createAsyncThunk(
-  'auth/login',
+  "auth/login",
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const response = await authService.login(credentials);
+      const response = await fakeAuthService.login(credentials);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Login failed');
+      return rejectWithValue(error.message || "Login failed");
     }
   }
 );
 
 export const registerUser = createAsyncThunk(
-  'auth/register',
+  "auth/register",
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
-      const response = await authService.register(userData);
+      const response = await fakeAuthService.register(userData);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Registration failed');
+      return rejectWithValue(error.message || "Registration failed");
     }
   }
 );
 
 export const refreshToken = createAsyncThunk(
-  'auth/refreshToken',
+  "auth/refreshToken",
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { auth: AuthState };
       const { refreshToken } = state.auth;
-      
+
       if (!refreshToken) {
-        throw new Error('No refresh token available');
+        throw new Error("No refresh token available");
       }
-      
-      const response = await authService.refreshToken(refreshToken);
+
+      const response = await fakeAuthService.refreshToken(refreshToken);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Token refresh failed');
+      return rejectWithValue(error.message || "Token refresh failed");
     }
   }
 );
 
 export const logoutUser = createAsyncThunk(
-  'auth/logout',
+  "auth/logout",
   async (_, { getState, rejectWithValue }) => {
     try {
       const state = getState() as { auth: AuthState };
       const { refreshToken } = state.auth;
-      
+
       if (refreshToken) {
-        await authService.logout(refreshToken);
+        await fakeAuthService.logout(refreshToken);
       }
-      
+
       return null;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Logout failed');
+      return rejectWithValue(error.message || "Logout failed");
     }
   }
 );
 
 export const getCurrentUser = createAsyncThunk(
-  'auth/getCurrentUser',
+  "auth/getCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const user = await authService.getCurrentUser();
+      const user = await fakeAuthService.getCurrentUser();
       return user;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Failed to get current user');
+      return rejectWithValue(error.message || "Failed to get current user");
     }
   }
 );
 
 export const updateProfile = createAsyncThunk(
-  'auth/updateProfile',
+  "auth/updateProfile",
   async (userData: Partial<User>, { rejectWithValue }) => {
     try {
-      const user = await authService.updateProfile(userData);
+      const user = await fakeAuthService.updateProfile(userData);
       return user;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Profile update failed');
+      return rejectWithValue(error.message || "Profile update failed");
     }
   }
 );
 
 // Auth slice
 const authSlice = createSlice({
-  name: 'auth',
+  name: "auth",
   initialState,
   reducers: {
     clearError: (state) => {
       state.error = null;
     },
-    setTokens: (state, action: PayloadAction<{ accessToken: string; refreshToken: string }>) => {
+    setTokens: (
+      state,
+      action: PayloadAction<{ accessToken: string; refreshToken: string }>
+    ) => {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
       state.isAuthenticated = true;
@@ -200,10 +203,12 @@ const authSlice = createSlice({
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
+        state.isAuthenticated = true; // Set authenticated when user is loaded
         state.error = null;
       })
       .addCase(getCurrentUser.rejected, (state, action) => {
         state.isLoading = false;
+        state.isAuthenticated = false; // Set not authenticated on error
         state.error = action.payload as string;
       });
 
