@@ -5,3 +5,4 @@ export { LoadingSpinner } from "./LoadingSpinner";
 export { Alert } from "./Alert";
 export { TabIcon } from "./TabIcon";
 export { SelectionModal } from "./SelectionModal";
+export { SuccessModal } from "./SuccessModal";

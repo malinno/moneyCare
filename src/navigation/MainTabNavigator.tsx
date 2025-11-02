@@ -1,18 +1,28 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { TouchableOpacity, View } from "react-native";
+import { createStackNavigator } from "@react-navigation/stack";
+import { View, StyleSheet } from "react-native";
 import { useTheme } from "@contexts/ThemeContext";
-import { MainTabParamList } from "@/types/index";
+import { MainTabParamList, HomeStackParamList } from "@/types/index";
 import {
   HomeScreen,
   TransactionScreen,
-  EditTransactionScreen,
   StatisticsScreen,
   ProfileScreen,
+  CreateCategoryScreen,
 } from "@screens/main";
 import { TabIcon } from "@components/common/TabIcon";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const Stack = createStackNavigator<HomeStackParamList>();
+
+// We create a stack navigator for the Home tab
+const HomeNavigator = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="Home" component={HomeScreen} />
+    <Stack.Screen name="CreateCategory" component={CreateCategoryScreen} />
+  </Stack.Navigator>
+);
 
 export const MainTabNavigator: React.FC = () => {
   const { theme } = useTheme();
@@ -25,7 +35,7 @@ export const MainTabNavigator: React.FC = () => {
           let iconName: "home" | "thu_chi" | "thong_ke" | "user" | "add";
 
           switch (route.name) {
-            case "Home":
+            case "HomeStack": // Changed from "Home"
               iconName = "home";
               break;
             case "Transactions":
@@ -51,9 +61,10 @@ export const MainTabNavigator: React.FC = () => {
         tabBarStyle: {
           backgroundColor: theme.colors.background.flashWhite,
           borderTopColor: theme.colors.border.light,
-          paddingBottom: 10,
+          borderTopWidth: 1,
+          paddingBottom: 20,
           paddingTop: 8,
-          height: 60,
+          height: 80,
           position: "absolute",
           bottom: 0,
           left: 0,
@@ -63,11 +74,18 @@ export const MainTabNavigator: React.FC = () => {
           fontSize: 12,
           fontWeight: "500",
         },
+        tabBarItemStyle: {
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          paddingHorizontal: 0,
+          paddingVertical: 4,
+        },
       })}
     >
       <Tab.Screen
-        name="Home"
-        component={HomeScreen}
+        name="HomeStack" // Changed from "Home"
+        component={HomeNavigator} // Use the stack navigator
         options={{
           tabBarLabel: "Trang chủ",
         }}
@@ -81,35 +99,24 @@ export const MainTabNavigator: React.FC = () => {
       />
       <Tab.Screen
         name="AddTransaction"
-        component={TransactionScreen} // Placeholder for now
+        component={HomeScreen} // This still goes to home screen to show a modal
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default action
+            e.preventDefault();
+            // Navigate to home to show the modal
+            navigation.navigate("HomeStack", { screen: "Home", params: { showAddModal: true } });
+          },
+        })}
         options={{
           tabBarLabel: "",
-          tabBarButton: (props) => {
-            const { onPress, ...restProps } = props;
-            return (
-              <TouchableOpacity
-                onPress={onPress}
-                style={{
-                  justifyContent: "center",
-                  alignItems: "center",
-                  backgroundColor: "#3B82F6",
-                  borderRadius: 35,
-                  width: 60,
-                  height: 60,
-                  marginTop: -30,
-                  shadowColor: "#3B82F6",
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                  borderWidth: 3,
-                  borderColor: "#FFFFFF",
-                }}
-              >
-                <TabIcon name="add" focused={true} size={28} />
-              </TouchableOpacity>
-            );
-          },
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.addButtonContainer}>
+              <View style={[styles.addButton, { backgroundColor: theme.colors.primary[500] }]}>
+                <TabIcon name="add" focused={true} size={24} />
+              </View>
+            </View>
+          ),
         }}
       />
       <Tab.Screen
@@ -126,13 +133,30 @@ export const MainTabNavigator: React.FC = () => {
           tabBarLabel: "Cá nhân",
         }}
       />
-      <Tab.Screen
-        name="EditTransaction"
-        component={EditTransactionScreen}
-        options={{
-          tabBarButton: () => null, // Hide from tab bar
-        }}
-      />
     </Tab.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  addButtonContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 60,
+    height: 60,
+    marginTop: -15,
+  },
+  addButton: {
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 30,
+    width: 50,
+    height: 50,
+    shadowColor: "#3B82F6",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+});

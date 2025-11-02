@@ -1,58 +1,35 @@
-import { api } from '@config/api';
-import { Budget, CreateBudgetData } from '@types/index';
+import axios from 'axios';
+import { API_BASE_URL } from '@constants/index';
+import { Budget, CreateBudgetData } from '@/types/index';
 
 export const budgetService = {
   // Get all budgets
   async getBudgets(): Promise<Budget[]> {
-    const response = await api.get<Budget[]>('/budgets');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch budgets');
+    const response = await axios.get(`${API_BASE_URL}/budgets`);
+    return response.data;
   },
 
   // Get budget by ID
   async getBudgetById(id: string): Promise<Budget> {
-    const response = await api.get<Budget>(`/budgets/${id}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch budget');
+    const response = await axios.get(`${API_BASE_URL}/budgets/${id}`);
+    return response.data;
   },
 
   // Create budget
   async createBudget(data: CreateBudgetData): Promise<Budget> {
-    const response = await api.post<Budget>('/budgets', data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to create budget');
+    const response = await axios.post(`${API_BASE_URL}/budgets`, data);
+    return response.data;
   },
 
   // Update budget
   async updateBudget(id: string, data: Partial<CreateBudgetData>): Promise<Budget> {
-    const response = await api.patch<Budget>(`/budgets/${id}`, data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to update budget');
+    const response = await axios.patch(`${API_BASE_URL}/budgets/${id}`, data);
+    return response.data;
   },
 
   // Delete budget
   async deleteBudget(id: string): Promise<void> {
-    const response = await api.delete(`/budgets/${id}`);
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to delete budget');
-    }
+    await axios.delete(`${API_BASE_URL}/budgets/${id}`);
   },
 
   // Get budget progress
@@ -70,24 +47,14 @@ export const budgetService = {
       categoryName: string;
     }>;
   }> {
-    const response = await api.get(`/budgets/${id}/progress`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch budget progress');
+    const response = await axios.get(`${API_BASE_URL}/budgets/${id}/progress`);
+    return response.data;
   },
 
   // Get active budgets
   async getActiveBudgets(): Promise<Budget[]> {
-    const response = await api.get<Budget[]>('/budgets/active');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch active budgets');
+    const response = await axios.get(`${API_BASE_URL}/budgets/active`);
+    return response.data;
   },
 
   // Get budget alerts
@@ -99,13 +66,8 @@ export const budgetService = {
     limit: number;
     type: 'warning' | 'danger';
   }>> {
-    const response = await api.get('/budgets/alerts');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch budget alerts');
+    const response = await axios.get(`${API_BASE_URL}/budgets/alerts`);
+    return response.data;
   },
 
   // Get budget statistics
@@ -126,12 +88,7 @@ export const budgetService = {
       if (value) queryParams.append(key, value);
     });
     
-    const response = await api.get(`/budgets/stats?${queryParams.toString()}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch budget statistics');
+    const response = await axios.get(`${API_BASE_URL}/budgets/stats?${queryParams.toString()}`);
+    return response.data;
   },
 };

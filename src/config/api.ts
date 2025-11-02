@@ -101,22 +101,42 @@ const refreshAccessToken = async (): Promise<string> => {
     throw new Error("No refresh token available");
   }
 
-  const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-    refreshToken,
-  });
+  try {
+    const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
+      refreshToken,
+    });
 
-  if (response.data.success) {
-    const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+    console.log('Refresh token response:', response.data);
+
+    // Handle different response formats
+    let accessToken, newRefreshToken;
+    
+    if (response.data.success && response.data.data) {
+      // Format: {success: true, data: {accessToken, refreshToken}}
+      accessToken = response.data.data.accessToken;
+      newRefreshToken = response.data.data.refreshToken;
+    } else if (response.data.accessToken) {
+      // Format: {accessToken, refreshToken}
+      accessToken = response.data.accessToken;
+      newRefreshToken = response.data.refreshToken;
+    } else {
+      throw new Error("Invalid refresh token response format");
+    }
+
+    if (!accessToken) {
+      throw new Error("No access token in refresh response");
+    }
 
     await AsyncStorage.multiSet([
       [STORAGE_KEYS.ACCESS_TOKEN, accessToken],
-      [STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken],
+      [STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken || refreshToken],
     ]);
 
     return accessToken;
+  } catch (error: any) {
+    console.error('Refresh token error:', error);
+    throw new Error("Token refresh failed: " + (error.message || "Unknown error"));
   }
-
-  throw new Error("Token refresh failed");
 };
 
 // Clear auth tokens

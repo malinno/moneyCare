@@ -6,11 +6,9 @@ export const APP_NAME = "MoneyCare";
 export const APP_VERSION = "1.0.0";
 
 // API Constants
-export const API_BASE_URL = __DEV__
-  ? "http://localhost:3000/api"
-  : "https://api.moneycare.com";
+export { API_BASE_URL } from '../config/environment';
 
-export const API_TIMEOUT = 10000;
+export const API_TIMEOUT = 30000; // Tăng timeout lên 30 giây
 
 // Storage Keys
 export const STORAGE_KEYS = {

@@ -79,6 +79,11 @@ export const fakeAuthService = {
       throw new Error("Tên đăng nhập đã tồn tại");
     }
 
+    // Validate password confirmation
+    if (userData.password !== userData.confirmPassword) {
+      throw new Error("Mật khẩu xác nhận không khớp");
+    }
+
     // Create new user
     const newUser: User = {
       id: `user_${Date.now()}`,

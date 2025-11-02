@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
 interface TabIconProps {
-  name: "home" | "thu_chi" | "thong_ke" | "user" | "add";
+  name: "home" | "dashboard" | "thu_chi" | "thong_ke" | "user" | "add";
   focused: boolean;
   size?: number;
 }

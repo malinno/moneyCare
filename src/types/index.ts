@@ -1,20 +1,23 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 // User Types
 export interface User {
   id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
+  username: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
   avatar?: string;
   phoneNumber?: string;
   dateOfBirth?: string;
-  currency: string;
-  createdAt: string;
-  updatedAt: string;
+  currency?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Authentication Types
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
   rememberMe?: boolean;
 }
@@ -22,6 +25,7 @@ export interface LoginCredentials {
 export interface RegisterData {
   username: string;
   password: string;
+  confirmPassword: string;
 }
 
 export interface AuthState {
@@ -151,7 +155,7 @@ export interface CategoryBreakdown {
 export type RootStackParamList = {
   Intro: undefined;
   Auth: undefined;
-  Main: undefined;
+  Main: NavigatorScreenParams<MainTabParamList>;
   Onboarding: undefined;
 };
 
@@ -166,8 +170,13 @@ export type AuthStackParamList = {
   ResetPassword: { token: string };
 };
 
+export type HomeStackParamList = {
+  Home: { showAddModal?: boolean };
+  CreateCategory: undefined;
+};
+
 export type MainTabParamList = {
-  Home: undefined;
+  HomeStack: NavigatorScreenParams<HomeStackParamList>;
   Transactions: undefined;
   AddTransaction: undefined;
   EditTransaction: { transaction: Transaction };

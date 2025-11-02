@@ -1,118 +1,110 @@
-import { api } from '@config/api';
-import { TransactionCategory } from '@types/index';
+import { apiClient } from '@config/api';
+
+export interface Category {
+  _id: string;
+  userId: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: 'income' | 'expense';
+  budgetLimit: number;
+  percentage: number;
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
+}
+
+export interface CreateCategoryData {
+  name: string;
+  icon: string;
+  color: string;
+  type: 'income' | 'expense';
+  budgetLimit: number;
+  percentage: number;
+}
+
+export interface UpdateCategoryData {
+  name?: string;
+  icon?: string;
+  color?: string;
+  type?: 'income' | 'expense';
+  budgetLimit?: number;
+}
 
 export const categoryService = {
-  // Get all categories
-  async getCategories(): Promise<TransactionCategory[]> {
-    const response = await api.get<TransactionCategory[]>('/categories');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch categories');
-  },
-
-  // Get category by ID
-  async getCategoryById(id: string): Promise<TransactionCategory> {
-    const response = await api.get<TransactionCategory>(`/categories/${id}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch category');
-  },
-
-  // Create category
-  async createCategory(data: Omit<TransactionCategory, 'id' | 'isDefault'>): Promise<TransactionCategory> {
-    const response = await api.post<TransactionCategory>('/categories', data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to create category');
-  },
-
-  // Update category
-  async updateCategory(id: string, data: Partial<TransactionCategory>): Promise<TransactionCategory> {
-    const response = await api.patch<TransactionCategory>(`/categories/${id}`, data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to update category');
-  },
-
-  // Delete category
-  async deleteCategory(id: string): Promise<void> {
-    const response = await api.delete(`/categories/${id}`);
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to delete category');
+  /**
+   * Get all categories for the current user
+   * @returns Promise<Category[]>
+   */
+  getCategories: async (): Promise<Category[]> => {
+    try {
+      console.log('Fetching categories from /categories...');
+      const response = await apiClient.get<Category[]>('/categories');
+      console.log('Categories response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      throw error;
     }
   },
 
-  // Get categories by type
-  async getCategoriesByType(type: 'income' | 'expense'): Promise<TransactionCategory[]> {
-    const response = await api.get<TransactionCategory[]>(`/categories/type/${type}`);
-    
-    if (response.data.success) {
-      return response.data.data;
+  /**
+   * Get a specific category by ID
+   * @param categoryId - The category ID
+   * @returns Promise<Category>
+   */
+  getCategoryById: async (categoryId: string): Promise<Category> => {
+    try {
+      const response = await apiClient.get<Category>(`/categories/${categoryId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching category:', error);
+      throw error;
     }
-    
-    throw new Error(response.data.message || 'Failed to fetch categories by type');
   },
 
-  // Get category statistics
-  async getCategoryStats(params: {
-    startDate?: string;
-    endDate?: string;
-    type?: 'income' | 'expense';
-  }): Promise<Array<{
-    categoryId: string;
-    categoryName: string;
-    totalAmount: number;
-    transactionCount: number;
-    percentage: number;
-    averageAmount: number;
-  }>> {
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) queryParams.append(key, value);
-    });
-    
-    const response = await api.get(`/categories/stats?${queryParams.toString()}`);
-    
-    if (response.data.success) {
-      return response.data.data;
+  /**
+   * Create a new category
+   * @param categoryData - The category data
+   * @returns Promise<Category>
+   */
+  createCategory: async (categoryData: CreateCategoryData): Promise<Category> => {
+    try {
+      const response = await apiClient.post<Category>('/categories', categoryData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating category:', error);
+      throw error;
     }
-    
-    throw new Error(response.data.message || 'Failed to fetch category statistics');
   },
 
-  // Get default categories
-  async getDefaultCategories(): Promise<TransactionCategory[]> {
-    const response = await api.get<TransactionCategory[]>('/categories/defaults');
-    
-    if (response.data.success) {
-      return response.data.data;
+  /**
+   * Update a category
+   * @param categoryId - The category ID
+   * @param categoryData - The updated category data
+   * @returns Promise<Category>
+   */
+  updateCategory: async (categoryId: string, categoryData: UpdateCategoryData): Promise<Category> => {
+    try {
+      const response = await apiClient.put<Category>(`/categories/${categoryId}`, categoryData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating category:', error);
+      throw error;
     }
-    
-    throw new Error(response.data.message || 'Failed to fetch default categories');
   },
 
-  // Reset to default categories
-  async resetToDefaultCategories(): Promise<TransactionCategory[]> {
-    const response = await api.post<TransactionCategory[]>('/categories/reset-defaults');
-    
-    if (response.data.success) {
-      return response.data.data;
+  /**
+   * Delete a category
+   * @param categoryId - The category ID
+   * @returns Promise<void>
+   */
+  deleteCategory: async (categoryId: string): Promise<void> => {
+    try {
+      await apiClient.delete(`/categories/${categoryId}`);
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      throw error;
     }
-    
-    throw new Error(response.data.message || 'Failed to reset to default categories');
   },
 };

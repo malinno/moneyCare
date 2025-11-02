@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { AuthState, User, LoginCredentials, RegisterData } from "@/types";
-import { fakeAuthService } from "@services/auth/fakeAuthService";
+import { authService } from "@services/auth/authService";
+import { userService } from "@services/api/userService";
 
 // Initial state
 const initialState: AuthState = {
@@ -17,7 +18,7 @@ export const loginUser = createAsyncThunk(
   "auth/login",
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      const response = await fakeAuthService.login(credentials);
+      const response = await authService.login(credentials);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || "Login failed");
@@ -29,7 +30,7 @@ export const registerUser = createAsyncThunk(
   "auth/register",
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
-      const response = await fakeAuthService.register(userData);
+      const response = await authService.register(userData);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || "Registration failed");
@@ -48,7 +49,7 @@ export const refreshToken = createAsyncThunk(
         throw new Error("No refresh token available");
       }
 
-      const response = await fakeAuthService.refreshToken(refreshToken);
+      const response = await authService.refreshToken(refreshToken);
       return response;
     } catch (error: any) {
       return rejectWithValue(error.message || "Token refresh failed");
@@ -64,7 +65,7 @@ export const logoutUser = createAsyncThunk(
       const { refreshToken } = state.auth;
 
       if (refreshToken) {
-        await fakeAuthService.logout(refreshToken);
+        await authService.logout(refreshToken);
       }
 
       return null;
@@ -78,8 +79,9 @@ export const getCurrentUser = createAsyncThunk(
   "auth/getCurrentUser",
   async (_, { rejectWithValue }) => {
     try {
-      const user = await fakeAuthService.getCurrentUser();
-      return user;
+      // Gọi API để lấy thông tin user hiện tại
+      const userData = await userService.getMe();
+      return userData;
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to get current user");
     }
@@ -90,7 +92,7 @@ export const updateProfile = createAsyncThunk(
   "auth/updateProfile",
   async (userData: Partial<User>, { rejectWithValue }) => {
     try {
-      const user = await fakeAuthService.updateProfile(userData);
+      const user = await authService.updateProfile(userData);
       return user;
     } catch (error: any) {
       return rejectWithValue(error.message || "Profile update failed");
@@ -131,11 +133,24 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Sử dụng user data từ API nếu có, nếu không thì tạo từ username
+        if (action.payload.user) {
+          state.user = action.payload.user;
+        } else {
+          // Fallback: tạo user object từ username
+          const username = action.meta.arg.username;
+          state.user = {
+            id: 'temp-id',
+            username: username,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
@@ -151,11 +166,24 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.user = action.payload.user;
         state.accessToken = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.isAuthenticated = true;
         state.error = null;
+        
+        // Sử dụng user data từ API nếu có, nếu không thì tạo từ username
+        if (action.payload.user) {
+          state.user = action.payload.user;
+        } else {
+          // Fallback: tạo user object từ username
+          const username = action.meta.arg.username;
+          state.user = {
+            id: 'temp-id',
+            username: username,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+        }
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;

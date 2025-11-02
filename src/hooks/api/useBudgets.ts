@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { budgetService } from "@services/api/budgetService";
 import { queryKeys, invalidateQueries } from "@config/queryClient";
-import { Budget, CreateBudgetData } from "@types/index";
+import { Budget, CreateBudgetData } from "@/types/index";
 
 // Get all budgets
 export const useBudgets = () => {

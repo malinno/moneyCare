@@ -17,7 +17,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { Button, Input } from "@components/common";
+import { Button, Input, LoadingSpinner } from "@components/common";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from "@constants/theme";
@@ -192,6 +192,15 @@ export const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <LoadingSpinner
+          overlay={true}
+          text="Đang đăng nhập..."
+          color="#FFFFFF"
+        />
+      )}
     </View>
   );
 };

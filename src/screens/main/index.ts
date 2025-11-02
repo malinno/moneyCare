@@ -3,3 +3,5 @@ export { TransactionScreen } from "./TransactionScreen";
 export { EditTransactionScreen } from "./EditTransactionScreen";
 export { StatisticsScreen } from "./StatisticsScreen";
 export { ProfileScreen } from "./ProfileScreen";
+export { CreateCategoryScreen } from "./CreateCategoryScreen";
+export { CreateSpendingLimitScreen } from "./CreateSpendingLimitScreen";

@@ -1,14 +1,17 @@
 // Auth hooks
 export * from "./useAuth";
 
+// User hooks
+export * from "./useUser";
+
+// Category hooks
+export * from "./useCategories";
+
 // Transaction hooks
 export * from "./useTransactions";
 
 // Budget hooks
 export * from "./useBudgets";
-
-// Category hooks
-export * from "./useCategories";
 
 // Account hooks
 export * from "./useAccounts";

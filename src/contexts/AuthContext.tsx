@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, ReactNode } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, AppDispatch } from "@store/index";
-import { getCurrentUser, clearAuth } from "@store/slices/authSlice";
-import { fakeAuthService } from "@services/auth/fakeAuthService";
+import { getCurrentUser, clearAuth, loginUser, registerUser } from "@store/slices/authSlice";
+import { authService } from "@services/auth/authService";
 import { User } from "@types/index";
 
 interface AuthContextType {
@@ -34,8 +34,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const isAuth = await fakeAuthService.isAuthenticated();
+      const isAuth = await authService.isAuthenticated();
       if (isAuth) {
+        // Gọi API để lấy thông tin user hiện tại
         dispatch(getCurrentUser());
       }
     } catch (error) {
@@ -46,8 +47,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string) => {
     try {
-      await fakeAuthService.login({ email: username, password });
-      dispatch(getCurrentUser());
+      const result = await dispatch(loginUser({ username, password }));
+      if (loginUser.fulfilled.match(result)) {
+        // Không gọi getCurrentUser vì API không có endpoint /auth/me
+        // User data sẽ được lưu từ login response
+      } else {
+        throw new Error(result.payload as string || "Login failed");
+      }
     } catch (error: any) {
       throw new Error(error.message || "Login failed");
     }
@@ -55,8 +61,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (userData: any) => {
     try {
-      await fakeAuthService.register(userData);
-      dispatch(getCurrentUser());
+      const result = await dispatch(registerUser(userData));
+      if (registerUser.fulfilled.match(result)) {
+        // Không gọi getCurrentUser vì API không có endpoint /auth/me
+        // User data sẽ được lưu từ register response
+      } else {
+        throw new Error(result.payload as string || "Registration failed");
+      }
     } catch (error: any) {
       throw new Error(error.message || "Registration failed");
     }
@@ -64,9 +75,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      const refreshToken = await fakeAuthService.getStoredUser();
+      const refreshToken = await authService.getStoredUser();
       if (refreshToken) {
-        await fakeAuthService.logout(refreshToken as any);
+        await authService.logout(refreshToken as any);
       }
       dispatch(clearAuth());
     } catch (error: any) {
@@ -77,6 +88,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
+      // Gọi API để lấy thông tin user mới nhất
       dispatch(getCurrentUser());
     } catch (error: any) {
       console.error("Refresh user error:", error);

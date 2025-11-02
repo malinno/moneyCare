@@ -1,109 +1,139 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { categoryService } from "@services/api/categoryService";
-import { queryKeys, invalidateQueries } from "@config/queryClient";
-import { Category, CreateCategoryData } from "@types/index";
+import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { categoryService, Category, CreateCategoryData, UpdateCategoryData } from '@services/api/categoryService';
 
-// Get all categories
-export const useCategories = (type?: "income" | "expense") => {
+export interface UseCategoriesOptions {
+  enabled?: boolean;
+  staleTime?: number;
+  cacheTime?: number;
+}
+
+export const useCategories = (options?: UseCategoriesOptions): UseQueryResult<Category[], Error> => {
+  const {
+    enabled = true,
+    staleTime = 5 * 60 * 1000, // 5 minutes
+    cacheTime = 10 * 60 * 1000, // 10 minutes
+  } = options || {};
+
   return useQuery({
-    queryKey: queryKeys.categories.list(type),
-    queryFn: () => categoryService.getCategories(type),
-    staleTime: 10 * 60 * 1000, // 10 minutes - categories don't change often
-  });
-};
-
-// Get income categories
-export const useIncomeCategories = () => {
-  return useCategories("income");
-};
-
-// Get expense categories
-export const useExpenseCategories = () => {
-  return useCategories("expense");
-};
-
-// Get single category
-export const useCategory = (id: string) => {
-  return useQuery({
-    queryKey: queryKeys.categories.detail(id),
-    queryFn: () => categoryService.getCategoryById(id),
-    enabled: !!id,
-    staleTime: 10 * 60 * 1000, // 10 minutes
-  });
-};
-
-// Get category statistics
-export const useCategoryStats = (params?: {
-  startDate?: string;
-  endDate?: string;
-  type?: "income" | "expense";
-}) => {
-  return useQuery({
-    queryKey: queryKeys.categories.stats(params),
-    queryFn: () => categoryService.getCategoryStats(params || {}),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Get popular categories
-export const usePopularCategories = (
-  type?: "income" | "expense",
-  limit: number = 10
-) => {
-  return useQuery({
-    queryKey: [...queryKeys.categories.all, "popular", { type, limit }],
-    queryFn: () => categoryService.getPopularCategories(type, limit),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Create category mutation
-export const useCreateCategory = () => {
-  return useMutation({
-    mutationFn: (data: CreateCategoryData) =>
-      categoryService.createCategory(data),
-    onSuccess: () => {
-      // Invalidate category queries
-      invalidateQueries.categories();
+    queryKey: ['categories'],
+    queryFn: categoryService.getCategories,
+    enabled,
+    staleTime,
+    cacheTime,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 (unauthorized) errors
+      if (error && error.status === 401) {
+        console.log('401 error - user not authenticated, disabling query');
+        return false;
+      }
+      // Don't retry on "No refresh token available" errors
+      if (error && error.message && error.message.includes('No refresh token available')) {
+        console.log('No refresh token - user not authenticated, disabling query');
+        return false;
+      }
+      // Retry up to 3 times for other errors
+      return failureCount < 3;
     },
-    onError: (error) => {
-      console.error("Create category failed:", error);
+    onError: (error: any) => {
+      console.error('Error fetching categories:', error);
     },
   });
 };
 
-// Update category mutation
-export const useUpdateCategory = () => {
+// Hook to get categories by type
+export const useCategoriesByType = (type: 'income' | 'expense', options?: UseCategoriesOptions): UseQueryResult<Category[], Error> => {
+  const { data: categories = [], ...rest } = useCategories(options);
+  const filteredCategories = categories.filter(category => category.type === type);
+  
+  return {
+    data: filteredCategories,
+    ...rest
+  } as UseQueryResult<Category[], Error>;
+};
+
+// Hook to get expense categories only
+export const useExpenseCategories = (options?: UseCategoriesOptions): Category[] => {
+  return useCategoriesByType('expense', options);
+};
+
+// Hook to get income categories only
+export const useIncomeCategories = (options?: UseCategoriesOptions): Category[] => {
+  return useCategoriesByType('income', options);
+};
+
+// Hook to get a specific category by ID
+export const useCategory = (categoryId: string, options?: UseCategoriesOptions): UseQueryResult<Category, Error> => {
+  const {
+    enabled = true,
+    staleTime = 5 * 60 * 1000,
+    cacheTime = 10 * 60 * 1000,
+  } = options || {};
+
+  return useQuery({
+    queryKey: ['categories', categoryId],
+    queryFn: () => categoryService.getCategoryById(categoryId),
+    enabled: enabled && !!categoryId,
+    staleTime,
+    cacheTime,
+    retry: (failureCount, error: any) => {
+      if (error && error.status === 401) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    onError: (error: any) => {
+      console.error('Error fetching category:', error);
+    },
+  });
+};
+
+// Mutation hooks
+export const useCreateCategory = (): UseMutationResult<Category, Error, CreateCategoryData> => {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Partial<CreateCategoryData>;
-    }) => categoryService.updateCategory(id, data),
+    mutationFn: categoryService.createCategory,
+    onSuccess: (newCategory) => {
+      // Invalidate and refetch categories
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      console.log('Category created successfully:', newCategory);
+    },
+    onError: (error: any) => {
+      console.error('Error creating category:', error);
+    },
+  });
+};
+
+export const useUpdateCategory = (): UseMutationResult<Category, Error, { categoryId: string; data: UpdateCategoryData }> => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ categoryId, data }) => categoryService.updateCategory(categoryId, data),
     onSuccess: (updatedCategory) => {
-      // Invalidate category queries
-      invalidateQueries.categories();
+      // Invalidate and refetch categories
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.invalidateQueries({ queryKey: ['categories', updatedCategory._id] });
+      console.log('Category updated successfully:', updatedCategory);
     },
-    onError: (error) => {
-      console.error("Update category failed:", error);
+    onError: (error: any) => {
+      console.error('Error updating category:', error);
     },
   });
 };
 
-// Delete category mutation
-export const useDeleteCategory = () => {
+export const useDeleteCategory = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (id: string) => categoryService.deleteCategory(id),
-    onSuccess: () => {
-      // Invalidate category queries
-      invalidateQueries.categories();
-      // Also invalidate transactions as they might be affected
-      invalidateQueries.transactions();
+    mutationFn: categoryService.deleteCategory,
+    onSuccess: (_, categoryId) => {
+      // Invalidate and refetch categories
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      queryClient.removeQueries({ queryKey: ['categories', categoryId] });
+      console.log('Category deleted successfully:', categoryId);
     },
-    onError: (error) => {
-      console.error("Delete category failed:", error);
+    onError: (error: any) => {
+      console.error('Error deleting category:', error);
     },
   });
 };

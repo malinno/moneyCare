@@ -1,175 +1,133 @@
-import { useQuery, useMutation, useInfiniteQuery } from "@tanstack/react-query";
-import { transactionService } from "@services/api/transactionService";
-import { queryKeys, invalidateQueries } from "@config/queryClient";
-import {
-  Transaction,
-  CreateTransactionData,
-  PaginatedResponse,
-} from "@types/index";
+import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { transactionService, Transaction, CreateTransactionData, UpdateTransactionData, TransactionFilters } from '@services/api/transactionService';
 
-// Get transactions with pagination
-export const useTransactions = (params?: {
-  page?: number;
-  limit?: number;
-  filters?: any;
-}) => {
+export interface UseTransactionsOptions {
+  enabled?: boolean;
+  staleTime?: number;
+  cacheTime?: number;
+}
+
+export const useTransactions = (filters?: TransactionFilters, options?: UseTransactionsOptions): UseQueryResult<Transaction[], Error> => {
+  const {
+    enabled = true,
+    staleTime = 2 * 60 * 1000, // 2 minutes (shorter than categories)
+    cacheTime = 5 * 60 * 1000, // 5 minutes
+  } = options || {};
+
   return useQuery({
-    queryKey: queryKeys.transactions.list(params?.filters),
-    queryFn: () => transactionService.getTransactions(params || {}),
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
-};
-
-// Infinite query for transactions (for infinite scroll)
-export const useInfiniteTransactions = (filters?: any) => {
-  return useInfiniteQuery({
-    queryKey: queryKeys.transactions.list(filters),
-    queryFn: ({ pageParam = 1 }) =>
-      transactionService.getTransactions({
-        page: pageParam,
-        limit: 20,
-        filters,
-      }),
-    getNextPageParam: (lastPage: PaginatedResponse<Transaction>) => {
-      return lastPage.pagination.hasNext
-        ? lastPage.pagination.page + 1
-        : undefined;
+    queryKey: ['transactions', filters],
+    queryFn: () => transactionService.getTransactions(filters),
+    enabled,
+    staleTime,
+    cacheTime,
+    retry: (failureCount, error: any) => {
+      // Don't retry on 401 (unauthorized) errors
+      if (error && error.status === 401) {
+        console.log('401 error - user not authenticated, disabling query');
+        return false;
+      }
+      // Don't retry on "No refresh token available" errors
+      if (error && error.message && error.message.includes('No refresh token available')) {
+        console.log('No refresh token - user not authenticated, disabling query');
+        return false;
+      }
+      // Retry up to 3 times for other errors
+      return failureCount < 3;
     },
-    initialPageParam: 1,
-    staleTime: 2 * 60 * 1000,
+    onError: (error: any) => {
+      console.error('Error fetching transactions:', error);
+    },
   });
 };
 
-// Get single transaction
-export const useTransaction = (id: string) => {
+// Hook to get transactions by type
+export const useTransactionsByType = (type: 'income' | 'expense', options?: UseTransactionsOptions): UseQueryResult<Transaction[], Error> => {
+  return useTransactions({ type }, options);
+};
+
+// Hook to get expense transactions only
+export const useExpenseTransactions = (options?: UseTransactionsOptions): UseQueryResult<Transaction[], Error> => {
+  return useTransactionsByType('expense', options);
+};
+
+// Hook to get income transactions only
+export const useIncomeTransactions = (options?: UseTransactionsOptions): UseQueryResult<Transaction[], Error> => {
+  return useTransactionsByType('income', options);
+};
+
+// Hook to get a specific transaction by ID
+export const useTransaction = (transactionId: string, options?: UseTransactionsOptions): UseQueryResult<Transaction, Error> => {
+  const {
+    enabled = true,
+    staleTime = 5 * 60 * 1000,
+    cacheTime = 10 * 60 * 1000,
+  } = options || {};
+
   return useQuery({
-    queryKey: queryKeys.transactions.detail(id),
-    queryFn: () => transactionService.getTransactionById(id),
-    enabled: !!id,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    queryKey: ['transactions', transactionId],
+    queryFn: () => transactionService.getTransactionById(transactionId),
+    enabled: enabled && !!transactionId,
+    staleTime,
+    cacheTime,
+    retry: (failureCount, error: any) => {
+      if (error && error.status === 401) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    onError: (error: any) => {
+      console.error('Error fetching transaction:', error);
+    },
   });
 };
 
-// Get recent transactions
-export const useRecentTransactions = (limit: number = 10) => {
-  return useQuery({
-    queryKey: queryKeys.transactions.recent(limit),
-    queryFn: () => transactionService.getRecentTransactions(limit),
-    staleTime: 1 * 60 * 1000, // 1 minute
-  });
-};
+// Mutation hooks
+export const useCreateTransaction = (): UseMutationResult<Transaction, Error, CreateTransactionData> => {
+  const queryClient = useQueryClient();
 
-// Get transaction statistics
-export const useTransactionStats = (params?: {
-  startDate?: string;
-  endDate?: string;
-  groupBy?: "day" | "week" | "month" | "year";
-}) => {
-  return useQuery({
-    queryKey: queryKeys.transactions.stats(params),
-    queryFn: () => transactionService.getTransactionStats(params || {}),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-};
-
-// Search transactions
-export const useSearchTransactions = (query: string, limit: number = 20) => {
-  return useQuery({
-    queryKey: [...queryKeys.transactions.all, "search", { query, limit }],
-    queryFn: () => transactionService.searchTransactions(query, limit),
-    enabled: query.length > 0,
-    staleTime: 30 * 1000, // 30 seconds
-  });
-};
-
-// Create transaction mutation
-export const useCreateTransaction = () => {
   return useMutation({
-    mutationFn: (data: CreateTransactionData) =>
-      transactionService.createTransaction(data),
-    onSuccess: () => {
-      // Invalidate and refetch transaction queries
-      invalidateQueries.transactions();
-      // Also invalidate related data
-      invalidateQueries.budgets();
-      invalidateQueries.accounts();
+    mutationFn: transactionService.createTransaction,
+    onSuccess: (newTransaction) => {
+      // Invalidate and refetch transactions
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      console.log('Transaction created successfully:', newTransaction);
     },
-    onError: (error) => {
-      console.error("Create transaction failed:", error);
+    onError: (error: any) => {
+      console.error('Error creating transaction:', error);
     },
   });
 };
 
-// Update transaction mutation
-export const useUpdateTransaction = () => {
+export const useUpdateTransaction = (): UseMutationResult<Transaction, Error, { transactionId: string; data: UpdateTransactionData }> => {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: Partial<CreateTransactionData>;
-    }) => transactionService.updateTransaction(id, data),
+    mutationFn: ({ transactionId, data }) => transactionService.updateTransaction(transactionId, data),
     onSuccess: (updatedTransaction) => {
-      // Invalidate transaction queries
-      invalidateQueries.transactions();
-      invalidateQueries.transaction(updatedTransaction.id);
-      // Also invalidate related data
-      invalidateQueries.budgets();
-      invalidateQueries.accounts();
+      // Invalidate and refetch transactions
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions', updatedTransaction.id] });
+      console.log('Transaction updated successfully:', updatedTransaction);
     },
-    onError: (error) => {
-      console.error("Update transaction failed:", error);
+    onError: (error: any) => {
+      console.error('Error updating transaction:', error);
     },
   });
 };
 
-// Delete transaction mutation
-export const useDeleteTransaction = () => {
-  return useMutation({
-    mutationFn: (id: string) => transactionService.deleteTransaction(id),
-    onSuccess: () => {
-      // Invalidate transaction queries
-      invalidateQueries.transactions();
-      // Also invalidate related data
-      invalidateQueries.budgets();
-      invalidateQueries.accounts();
-    },
-    onError: (error) => {
-      console.error("Delete transaction failed:", error);
-    },
-  });
-};
+export const useDeleteTransaction = (): UseMutationResult<void, Error, string> => {
+  const queryClient = useQueryClient();
 
-// Bulk delete transactions mutation
-export const useBulkDeleteTransactions = () => {
   return useMutation({
-    mutationFn: (ids: string[]) =>
-      transactionService.bulkDeleteTransactions(ids),
-    onSuccess: () => {
-      // Invalidate transaction queries
-      invalidateQueries.transactions();
-      // Also invalidate related data
-      invalidateQueries.budgets();
-      invalidateQueries.accounts();
+    mutationFn: transactionService.deleteTransaction,
+    onSuccess: (_, transactionId) => {
+      // Invalidate and refetch transactions
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.removeQueries({ queryKey: ['transactions', transactionId] });
+      console.log('Transaction deleted successfully:', transactionId);
     },
-    onError: (error) => {
-      console.error("Bulk delete transactions failed:", error);
-    },
-  });
-};
-
-// Export transactions mutation
-export const useExportTransactions = () => {
-  return useMutation({
-    mutationFn: (params: {
-      format: "csv" | "xlsx" | "pdf";
-      startDate?: string;
-      endDate?: string;
-      categoryIds?: string[];
-    }) => transactionService.exportTransactions(params),
-    onError: (error) => {
-      console.error("Export transactions failed:", error);
+    onError: (error: any) => {
+      console.error('Error deleting transaction:', error);
     },
   });
 };

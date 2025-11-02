@@ -7,7 +7,7 @@ import { User, LoginCredentials, RegisterData } from "@types/index";
 export const useUser = () => {
   return useQuery({
     queryKey: queryKeys.auth.user,
-    queryFn: authService.getCurrentUser,
+    queryFn: authService.getStoredUser, // Sử dụng stored user thay vì API call
     staleTime: 10 * 60 * 1000, // 10 minutes
     retry: false, // Don't retry on auth errors
   });

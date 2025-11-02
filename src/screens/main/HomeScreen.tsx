@@ -10,17 +10,54 @@ import {
   Dimensions,
   Image,
   TextInput,
+  Modal,
 } from "react-native";
 import { SelectionModal } from "../../components/common";
 import { TransactionForm } from "../../components/forms";
-
+import { useUsername, useCategories, useCreateCategory, useTransactionsByType } from "../../hooks/api";
+import { useDashboard } from "../../hooks/api/useDashboard";
+import { useDashboardPeriods } from "../../hooks/api/useDashboardPeriods";
+import { useSpendingLimits } from "../../hooks/api/useSpendingLimits";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
+import { getIconFromString } from "../../utils/iconMapping";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useCreateSpendingLimit } from "../../hooks/api/useSpendingLimits";
 const { width, height } = Dimensions.get("window");
 
 export const HomeScreen: React.FC = () => {
+  const navigation = useNavigation();
+  
+  // Get authentication state
+  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+  
+  // Get username from API (only if authenticated)
+  const username = useUsername({ enabled: isAuthenticated });
+  
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideUpAnim = useRef(new Animated.Value(30)).current;
   const [selectedTab, setSelectedTab] = useState("Chi");
+  const [selectedPeriod, setSelectedPeriod] = useState("this_month");
+  
+  // Get categories from API
+  const { data: categories = [], isLoading: categoriesLoading, error: categoriesError } = useCategories();
+  
+  // Get transactions based on selected tab
+  const { data: transactions = [], isLoading: transactionsLoading, error: transactionsError } = useTransactionsByType(
+    selectedTab === "Chi" ? "expense" : "income"
+  );
+  
+  // Get dashboard periods from API
+  const { data: periods = [], isLoading: periodsLoading, error: periodsError } = useDashboardPeriods();
+  
+  // Get dashboard data with selected period
+  const { data: dashboardData, isLoading: dashboardLoading, error: dashboardError } = useDashboard(selectedPeriod);
+  
+  // Get spending limits from API
+  const { data: apiSpendingLimits = [], isLoading: spendingLimitsLoading, error: spendingLimitsError } = useSpendingLimits();
+  // Create category mutation
+  const createCategoryMutation = useCreateCategory();
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedDate, setSelectedDate] = useState("Tháng này");
@@ -28,221 +65,92 @@ export const HomeScreen: React.FC = () => {
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isTransactionFormVisible, setIsTransactionFormVisible] =
     useState(false);
+  const [isSpendingLimitModalVisible, setIsSpendingLimitModalVisible] = useState(false);
   const [transactionType, setTransactionType] = useState<"income" | "expense">(
     "expense"
   );
+  const [spendingLimitAmount, setSpendingLimitAmount] = useState("");
   const searchAnim = useRef(new Animated.Value(0)).current;
   const searchWidthAnim = useRef(new Animated.Value(0)).current;
   const datePickerAnim = useRef(new Animated.Value(0)).current;
 
-  // Fake data
+  // Use dashboard data instead of fake data
   const monthlySpending = {
-    totalSpent: 10500000,
-    balance: 2000000,
+    totalSpent: dashboardData?.monthlySummary?.totalSpent || 0,
+    balance: dashboardData?.monthlySummary?.balance || 0,
   };
 
-  const [categories, setCategories] = useState([
-    {
-      id: 1,
-      name: "Cần thiết",
-      amount: 1000000,
-      percentage: 59,
-      color: "#8B5CF6",
-      icon: "🛒",
-    },
-    {
-      id: 2,
-      name: "Đào tạo",
-      amount: 1000000,
-      percentage: 32,
-      color: "#3B82F6",
-      icon: "📚",
-    },
-    {
-      id: 3,
-      name: "Hưởng thụ",
-      amount: 1000000,
-      percentage: 10,
-      color: "#F97316",
-      icon: "🎉",
-    },
-    {
-      id: 4,
-      name: "Tiết kiệm",
-      amount: 800000,
-      percentage: 45,
-      color: "#10B981",
-      icon: "🐷",
-    },
-    {
-      id: 5,
-      name: "Từ thiện",
-      amount: 500000,
-      percentage: 25,
-      color: "#EF4444",
-      icon: "⛪",
-    },
-    {
-      id: 6,
-      name: "Tự do",
-      amount: 300000,
-      percentage: 15,
-      color: "#8B5CF6",
-      icon: "🤲",
-    },
-    {
-      id: 7,
-      name: "Y tế",
-      amount: 200000,
-      percentage: 8,
-      color: "#F59E0B",
-      icon: "🏥",
-    },
-    {
-      id: 8,
-      name: "Du lịch",
-      amount: 1500000,
-      percentage: 75,
-      color: "#06B6D4",
-      icon: "✈️",
-    },
-  ]);
+  // Categories are now loaded from API via useCategories hook
 
-  const transactions = [
-    {
-      id: 1,
-      title: "Tiền siêu thị",
-      category: "Chỉ tiêu hàng ngày",
-      date: "03/06/23",
-      amount: 250000,
-      color: "#8B5CF6",
-    },
-    {
-      id: 2,
-      title: "Đào tạo",
-      category: "Học tiếng anh",
-      date: "03/06/23",
-      amount: 250000,
-      color: "#3B82F6",
-    },
-    {
-      id: 3,
-      title: "Hưởng thụ",
-      category: "Đi công viên",
-      date: "03/06/23",
-      amount: 250000,
-      color: "#F97316",
-    },
-    {
-      id: 4,
-      title: "Tiền tiết kiệm",
-      category: "Tiền tiết kiệm",
-      date: "03/06/23",
-      amount: 250000,
-      color: "#EC4899",
-    },
-    {
-      id: 5,
-      title: "Mua sắm",
-      category: "Quần áo",
-      date: "02/06/23",
-      amount: 500000,
-      color: "#10B981",
-    },
-    {
-      id: 6,
-      title: "Ăn uống",
-      category: "Nhà hàng",
-      date: "02/06/23",
-      amount: 180000,
-      color: "#F59E0B",
-    },
-    {
-      id: 7,
-      title: "Xăng xe",
-      category: "Phương tiện",
-      date: "01/06/23",
-      amount: 300000,
-      color: "#EF4444",
-    },
-    {
-      id: 8,
-      title: "Điện thoại",
-      category: "Công nghệ",
-      date: "01/06/23",
-      amount: 1200000,
-      color: "#8B5CF6",
-    },
-    {
-      id: 9,
-      title: "Cà phê",
-      category: "Giải trí",
-      date: "31/05/23",
-      amount: 50000,
-      color: "#6B7280",
-    },
-    {
-      id: 10,
-      title: "Sách vở",
-      category: "Học tập",
-      date: "31/05/23",
-      amount: 150000,
-      color: "#3B82F6",
-    },
-  ];
+  // Transactions are now loaded from API via useTransactionsByType hook
 
-  const spendingLimits = [
-    {
-      name: "Cần thiết",
-      limit: 5500000,
-      spent: 5000000,
-      icon: "📄",
-      iconColor: "#8B5CF6",
-      statusColor: "#10B981",
-    },
-    {
-      name: "Đào tạo",
-      limit: 1000000,
-      spent: 800000,
-      icon: "🎓",
-      iconColor: "#3B82F6",
-      statusColor: "#10B981",
-    },
-    {
-      name: "Hưởng thụ",
-      limit: 500000,
-      spent: 800000,
-      icon: "🪙",
-      iconColor: "#F97316",
-      statusColor: "#EF4444",
-    },
-    {
-      name: "Tiết kiệm",
-      limit: 1000000,
-      spent: 800000,
-      icon: "🐷",
-      iconColor: "#EF4444",
-      statusColor: "#10B981",
-    },
-    {
-      name: "Từ thiện",
-      limit: 1000000,
-      spent: 800000,
-      icon: "🎁",
-      iconColor: "#EC4899",
-      statusColor: "#10B981",
-    },
-    {
-      name: "Tự do",
-      limit: 1000000,
-      spent: 800000,
-      icon: "🤲",
-      iconColor: "#10B981",
-      statusColor: "#10B981",
-    },
-  ];
+  // Use API spending limits with fallback to dashboard data or hardcoded
+  const spendingLimits = apiSpendingLimits.length > 0 
+    ? apiSpendingLimits.map(limit => ({
+        name: limit.categoryName,
+        limit: limit.limit,
+        spent: limit.spent,
+        icon: "📄", // Default icon, can be enhanced later
+        iconColor: "#8B5CF6", // Default color, can be enhanced later
+        statusColor: limit.spent > limit.limit ? "#EF4444" : "#10B981",
+      }))
+    : dashboardData?.spendingLimits || [
+        {
+          name: "Cần thiết",
+          limit: 5500000,
+          spent: 5000000,
+          icon: "📄",
+          iconColor: "#8B5CF6",
+          statusColor: "#10B981",
+        },
+        {
+          name: "Đào tạo",
+          limit: 1000000,
+          spent: 800000,
+          icon: "🎓",
+          iconColor: "#3B82F6",
+          statusColor: "#10B981",
+        },
+        {
+          name: "Hưởng thụ",
+          limit: 500000,
+          spent: 800000,
+          icon: "🪙",
+          iconColor: "#F97316",
+          statusColor: "#EF4444",
+        },
+        {
+          name: "Tiết kiệm",
+          limit: 1000000,
+          spent: 800000,
+          icon: "🐷",
+          iconColor: "#EF4444",
+          statusColor: "#10B981",
+        },
+        {
+          name: "Từ thiện",
+          limit: 1000000,
+          spent: 800000,
+          icon: "🎁",
+          iconColor: "#EC4899",
+          statusColor: "#10B981",
+        },
+        {
+          name: "Tự do",
+          limit: 1000000,
+          spent: 800000,
+          icon: "🤲",
+          iconColor: "#10B981",
+          statusColor: "#10B981",
+        },
+      ];
 
-  const chartData = [
+  // Use dashboard data for chart
+  const chartData = dashboardData?.spendingTrend?.dataPoints?.map((point, index) => ({
+    date: point.date,
+    value: point.amount / 1000, // Convert to thousands for display
+    label: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"][index] || `T${index + 2}`,
+  })) || [
     { date: "11/6", value: 180, label: "T2" },
     { date: "12/6", value: 320, label: "T3" },
     { date: "13/6", value: 480, label: "T4" },
@@ -252,32 +160,31 @@ export const HomeScreen: React.FC = () => {
     { date: "17/6", value: 420, label: "CN" },
   ];
 
-  const dateOptions = [
-    "Tuần này",
-    "Tháng này",
-    "3 tháng qua",
-    "6 tháng qua",
-    "Năm nay",
-  ];
+  // Use periods from API instead of hardcoded
+  const dateOptions = periods.map(period => period.label);
 
   const formatCurrency = (amount: number) => {
     return amount.toLocaleString("vi-VN") + " ₫";
   };
 
-  const addNewCategory = () => {
-    const newCategory = {
-      id: Date.now(), // Simple ID generation
-      name: "Mới",
-      amount: 0,
-      percentage: 0,
-      color: "#6B7280",
-      icon: "➕",
-    };
-    setCategories([newCategory, ...categories]); // Add to beginning
+  const addNewCategory = async () => {
+    try {
+      await createCategoryMutation.mutateAsync({
+        name: "Mới",
+        icon: "➕",
+        color: "#6B7280",
+        type: "expense",
+        budgetLimit: 0,
+        percentage: 10,
+      });
+    } catch (error) {
+      
+    }
   };
 
   const handleAddPress = () => {
-    setIsAddModalVisible(true);
+    // Điều hướng đến CreateCategoryScreen
+    navigation.navigate('CreateCategory' as never);
   };
 
   const handleModalClose = () => {
@@ -288,22 +195,24 @@ export const HomeScreen: React.FC = () => {
     setTransactionType("income");
     setIsAddModalVisible(false);
     setIsTransactionFormVisible(true);
+    // Navigate back to Home
+    navigation.navigate('Home' as never);
   };
 
   const handleExpensePress = () => {
     setTransactionType("expense");
     setIsAddModalVisible(false);
     setIsTransactionFormVisible(true);
+    // Navigate back to Home
+    navigation.navigate('Home' as never);
   };
+
 
   const handleTransactionFormClose = () => {
     setIsTransactionFormVisible(false);
   };
 
   const handleTransactionSubmit = (transactionData: any) => {
-    console.log("handleTransactionSubmit called with:", transactionData);
-    // Here you would typically save the transaction to your state or API
-    // For now, we'll just log it
     setIsTransactionFormVisible(false);
   };
 
@@ -331,11 +240,34 @@ export const HomeScreen: React.FC = () => {
     handleDatePickerPress();
   };
 
+  const handlePeriodSelect = (periodLabel: string) => {
+    const selectedPeriodOption = periods.find(period => period.label === periodLabel);
+    if (selectedPeriodOption) {
+      setSelectedPeriod(selectedPeriodOption.value);
+    }
+    handleDatePickerPress();
+  };
+
+  const handleSpendingLimitSubmit = () => {
+    if (spendingLimitAmount.trim()) {
+      console.log("Thêm hạn mức chi tiêu:", spendingLimitAmount);
+      // TODO: Implement API call to save spending limit
+      setIsSpendingLimitModalVisible(false);
+      setSpendingLimitAmount("");
+    }
+  };
+
+  const handleSpendingLimitClose = () => {
+    setIsSpendingLimitModalVisible(false);
+    setSpendingLimitAmount("");
+  };
+
   // Filter transactions based on search text
   const filteredTransactions = transactions.filter(
     (transaction) =>
-      transaction.title.toLowerCase().includes(searchText.toLowerCase()) ||
-      transaction.category.toLowerCase().includes(searchText.toLowerCase())
+      transaction.description.toLowerCase().includes(searchText.toLowerCase()) ||
+      transaction.notes.toLowerCase().includes(searchText.toLowerCase()) ||
+      (transaction.category?.name || '').toLowerCase().includes(searchText.toLowerCase())
   );
 
   const handleSearchPress = () => {
@@ -390,6 +322,24 @@ export const HomeScreen: React.FC = () => {
     ]).start();
   }, []);
 
+  // Auto open modal when navigating to AddTransaction
+  useFocusEffect(
+    React.useCallback(() => {
+      const unsubscribe = navigation.addListener('state', () => {
+        const state = navigation.getState();
+        if (state && state.routes && state.routes[state.index]) {
+          const currentRoute = state.routes[state.index];
+          
+          if (currentRoute.name === 'AddTransaction') {
+            setIsAddModalVisible(true);
+          }
+        }
+      });
+
+      return unsubscribe;
+    }, [navigation])
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar
@@ -403,6 +353,7 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+
         {/* Header */}
         <Animated.View
           style={[
@@ -433,7 +384,9 @@ export const HomeScreen: React.FC = () => {
                 },
               ]}
             >
-              <Text style={styles.greeting}>Xin chào, Hồng</Text>
+              <Text style={styles.greeting}>
+                {dashboardData?.greeting || `Xin chào, ${username || "User"}`}
+              </Text>
             </Animated.View>
 
             <Animated.View
@@ -497,17 +450,19 @@ export const HomeScreen: React.FC = () => {
               <Text style={styles.monthlySpendingTitle}>
                 Số tiền bạn chi trong tháng
               </Text>
-              <TouchableOpacity style={styles.viewDetailsButton}>
-                <Text style={styles.viewDetailsText}>Xem chi tiết</Text>
-                <Text style={styles.arrowIcon}>→</Text>
+              <TouchableOpacity 
+                style={styles.addSpendingLimitButton}
+                onPress={() => setIsSpendingLimitModalVisible(true)}
+              >
+                <Text style={styles.addSpendingLimitIcon}>+</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.balanceBox}>
               <Text style={styles.balanceValue}>
-                {formatCurrency(monthlySpending.totalSpent)}
+                {formatCurrency(dashboardData?.monthlySummary?.totalSpent || monthlySpending.totalSpent)}
               </Text>
               <Text style={styles.balanceLabel}>
-                Số dư: {formatCurrency(monthlySpending.balance)}
+                Số dư: {formatCurrency(dashboardData?.monthlySummary?.balance || monthlySpending.balance)}
               </Text>
             </View>
           </View>
@@ -537,39 +492,49 @@ export const HomeScreen: React.FC = () => {
               contentContainerStyle={styles.categoryScrollContainer}
               style={styles.categoryScrollView}
             >
-              {categories.map((category) => (
-                <View
-                  key={category.id}
-                  style={[
-                    styles.categoryCard,
-                    { backgroundColor: category.color + "20" },
-                  ]}
-                >
-                  <View style={styles.categoryHeader}>
-                    <Text style={styles.categoryIcon}>{category.icon}</Text>
-                    <Text style={styles.categoryName}>{category.name}</Text>
-                  </View>
-                  <Text style={styles.categoryAmount}>
-                    {formatCurrency(category.amount)}
-                  </Text>
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          {
-                            width: `${category.percentage}%`,
-                            backgroundColor: category.color,
-                          },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.progressPercentage}>
-                      {category.percentage}%
-                    </Text>
-                  </View>
+              {categoriesLoading ? (
+                <View style={styles.loadingContainer}>
+                  <Text style={styles.loadingText}>Đang tải...</Text>
                 </View>
-              ))}
+              ) : categoriesError ? (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>Lỗi tải dữ liệu</Text>
+                </View>
+              ) : (
+                categories.map((category) => (
+                  <View
+                    key={category._id}
+                    style={[
+                      styles.categoryCard,
+                      { backgroundColor: category.color + "20" },
+                    ]}
+                  >
+                    <View style={styles.categoryHeader}>
+                      <Text style={styles.categoryIcon}>{getIconFromString(category.icon)}</Text>
+                      <Text style={styles.categoryName}>{category.name}</Text>
+                    </View>
+                    <Text style={styles.categoryAmount}>
+                      {formatCurrency(category.budgetLimit)}
+                    </Text>
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View
+                          style={[
+                            styles.progressFill,
+                            {
+                              width: `${category.percentage}%`,
+                              backgroundColor: category.color,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.progressPercentage}>
+                        {category.percentage}%
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
             </ScrollView>
           </View>
         </Animated.View>
@@ -616,7 +581,15 @@ export const HomeScreen: React.FC = () => {
           </View>
 
           <View style={styles.transactionListContainer}>
-            {filteredTransactions.length > 0 ? (
+            {transactionsLoading ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>Đang tải...</Text>
+              </View>
+            ) : transactionsError ? (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Lỗi tải dữ liệu</Text>
+              </View>
+            ) : filteredTransactions.length > 0 ? (
               <ScrollView
                 style={styles.transactionScrollView}
                 showsVerticalScrollIndicator={false}
@@ -635,15 +608,15 @@ export const HomeScreen: React.FC = () => {
                     <View
                       style={[
                         styles.transactionDot,
-                        { backgroundColor: transaction.color },
+                        { backgroundColor: transaction.category?.color || '#6B7280' },
                       ]}
                     />
                     <View style={styles.transactionContent}>
                       <Text style={styles.transactionTitle}>
-                        {transaction.title}
+                        {transaction.description}
                       </Text>
                       <Text style={styles.transactionCategory}>
-                        {transaction.category}
+                        {transaction.notes}
                       </Text>
                     </View>
                     <View style={styles.transactionRight}>
@@ -651,7 +624,7 @@ export const HomeScreen: React.FC = () => {
                         {formatCurrency(transaction.amount)}
                       </Text>
                       <Text style={styles.transactionDate}>
-                        {transaction.date}
+                        {new Date(transaction.date).toLocaleDateString('vi-VN')}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -692,7 +665,9 @@ export const HomeScreen: React.FC = () => {
                 onPress={handleDatePickerPress}
               >
                 <Text style={styles.calendarIcon}>📅</Text>
-                <Text style={styles.dateText}>{selectedDate}</Text>
+                <Text style={styles.dateText}>
+                  {periods.find(p => p.value === selectedPeriod)?.label || "Tháng này"}
+                </Text>
                 <Text
                   style={[
                     styles.chevronIcon,
@@ -725,14 +700,14 @@ export const HomeScreen: React.FC = () => {
                       key={index}
                       style={[
                         styles.dateOption,
-                        selectedDate === option && styles.selectedDateOption,
+                        periods.find(p => p.label === option)?.value === selectedPeriod && styles.selectedDateOption,
                       ]}
-                      onPress={() => handleDateSelect(option)}
+                      onPress={() => handlePeriodSelect(option)}
                     >
                       <Text
                         style={[
                           styles.dateOptionText,
-                          selectedDate === option &&
+                          periods.find(p => p.label === option)?.value === selectedPeriod &&
                             styles.selectedDateOptionText,
                         ]}
                       >
@@ -838,7 +813,7 @@ export const HomeScreen: React.FC = () => {
               const isOverLimit = limit.spent > limit.limit;
 
               return (
-                <View key={index} style={styles.spendingLimitItem}>
+                <View key={`spending-limit-${index}-${limit.name}`} style={styles.spendingLimitItem}>
                   <View style={styles.spendingLimitLeft}>
                     <View
                       style={[
@@ -905,6 +880,53 @@ export const HomeScreen: React.FC = () => {
         type={transactionType}
         onSubmit={handleTransactionSubmit}
       />
+
+      {/* Spending Limit Modal */}
+      <Modal
+        visible={isSpendingLimitModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleSpendingLimitClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.spendingLimitModal}>
+            <View style={styles.spendingLimitModalHeader}>
+              <Text style={styles.spendingLimitModalTitle}>Thêm hạn mức chi tiêu</Text>
+              <TouchableOpacity onPress={handleSpendingLimitClose}>
+                <Text style={styles.spendingLimitModalClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.spendingLimitModalContent}>
+              <Text style={styles.spendingLimitModalLabel}>Số tiền hạn mức (₫)</Text>
+              <TextInput
+                style={styles.spendingLimitModalInput}
+                placeholder="Nhập số tiền hạn mức"
+                placeholderTextColor="#9CA3AF"
+                value={spendingLimitAmount}
+                onChangeText={setSpendingLimitAmount}
+                keyboardType="numeric"
+              />
+            </View>
+            
+            <View style={styles.spendingLimitModalButtons}>
+              <TouchableOpacity
+                style={styles.spendingLimitModalCancelButton}
+                onPress={handleSpendingLimitClose}
+              >
+                <Text style={styles.spendingLimitModalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.spendingLimitModalSubmitButton}
+                onPress={handleSpendingLimitSubmit}
+              >
+                <Text style={styles.spendingLimitModalSubmitText}>Thêm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -996,19 +1018,27 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginBottom: 8,
   },
-  viewDetailsButton: {
-    flexDirection: "row",
+  addSpendingLimitButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#3B82F6",
+    justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
+    shadowColor: "#3B82F6",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  viewDetailsText: {
-    fontSize: 14,
-    color: "#3B82F6",
-    marginRight: 4,
-  },
-  arrowIcon: {
-    fontSize: 14,
-    color: "#3B82F6",
+  addSpendingLimitIcon: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   balanceBox: {
     backgroundColor: "#FFFFFF",
@@ -1543,5 +1573,106 @@ const styles = StyleSheet.create({
   progressBarFill: {
     height: "100%",
     borderRadius: 3,
+  },
+  loadingContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  errorContainer: {
+    padding: 20,
+    alignItems: "center",
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#EF4444",
+  },
+  // Spending Limit Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  spendingLimitModal: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    width: width * 0.9,
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  spendingLimitModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  spendingLimitModalTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1F2937",
+  },
+  spendingLimitModalClose: {
+    fontSize: 20,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  spendingLimitModalContent: {
+    marginBottom: 20,
+  },
+  spendingLimitModalLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#374151",
+    marginBottom: 8,
+  },
+  spendingLimitModalInput: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: "#1F2937",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  spendingLimitModalButtons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  spendingLimitModalCancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    alignItems: "center",
+  },
+  spendingLimitModalCancelText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  spendingLimitModalSubmitButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: "#3B82F6",
+    alignItems: "center",
+  },
+  spendingLimitModalSubmitText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
 });

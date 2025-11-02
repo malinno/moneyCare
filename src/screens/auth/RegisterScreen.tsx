@@ -19,6 +19,7 @@ import { Button, Input } from "@components/common";
 import { useAuth } from "@contexts/AuthContext";
 import { useTheme } from "@contexts/ThemeContext";
 import { SPACING, TYPOGRAPHY, BORDER_RADIUS } from "@constants/theme";
+import { authService } from "@services/auth/authService";
 import { fakeAuthService } from "@services/auth/fakeAuthService";
 
 const { width, height } = Dimensions.get("window");
@@ -71,17 +72,51 @@ export const RegisterScreen: React.FC = () => {
   const onSubmit = async (data: any) => {
     try {
       console.log("Starting registration with:", data.username);
-      // Register without setting isAuthenticated = true yet
-      await fakeAuthService.register({
+      // Try real API first
+      await authService.register({
         username: data.username,
         password: data.password,
+        confirmPassword: data.confirmPassword,
       });
       console.log("Registration successful, navigating to Welcome");
       // Navigate to Welcome screen after successful registration
       navigation.navigate("Welcome" as never);
     } catch (error: any) {
       console.error("Registration error:", error);
-      Alert.alert("Lỗi đăng ký", error.message);
+      
+      // Check if it's a network error and offer fallback
+      if (error.message.includes('Không thể kết nối đến server') || 
+          error.message.includes('Network Error') ||
+          error.message.includes('ENOTFOUND')) {
+        
+        Alert.alert(
+          "Lỗi kết nối", 
+          "Không thể kết nối đến server. Bạn có muốn sử dụng chế độ demo không?",
+          [
+            {
+              text: "Hủy",
+              style: "cancel"
+            },
+            {
+              text: "Sử dụng Demo",
+              onPress: async () => {
+                try {
+                  await fakeAuthService.register({
+                    username: data.username,
+                    password: data.password,
+                    confirmPassword: data.confirmPassword,
+                  });
+                  navigation.navigate("Welcome" as never);
+                } catch (fallbackError: any) {
+                  Alert.alert("Lỗi", fallbackError.message);
+                }
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert("Lỗi đăng ký", error.message || "Có lỗi xảy ra khi đăng ký");
+      }
     }
   };
 

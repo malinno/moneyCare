@@ -1,58 +1,35 @@
-import { api } from '@config/api';
-import { Account } from '@types/index';
+import axios from 'axios';
+import { API_BASE_URL } from '@constants/index';
+import { Account } from '@/types/index';
 
 export const accountService = {
   // Get all accounts
   async getAccounts(): Promise<Account[]> {
-    const response = await api.get<Account[]>('/accounts');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch accounts');
+    const response = await axios.get(`${API_BASE_URL}/accounts`);
+    return response.data;
   },
 
   // Get account by ID
   async getAccountById(id: string): Promise<Account> {
-    const response = await api.get<Account>(`/accounts/${id}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch account');
+    const response = await axios.get(`${API_BASE_URL}/accounts/${id}`);
+    return response.data;
   },
 
   // Create account
   async createAccount(data: Omit<Account, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Account> {
-    const response = await api.post<Account>('/accounts', data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to create account');
+    const response = await axios.post(`${API_BASE_URL}/accounts`, data);
+    return response.data;
   },
 
   // Update account
   async updateAccount(id: string, data: Partial<Account>): Promise<Account> {
-    const response = await api.patch<Account>(`/accounts/${id}`, data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to update account');
+    const response = await axios.patch(`${API_BASE_URL}/accounts/${id}`, data);
+    return response.data;
   },
 
   // Delete account
   async deleteAccount(id: string): Promise<void> {
-    const response = await api.delete(`/accounts/${id}`);
-    
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Failed to delete account');
-    }
+    await axios.delete(`${API_BASE_URL}/accounts/${id}`);
   },
 
   // Get account balance history
@@ -71,13 +48,8 @@ export const accountService = {
       if (value) queryParams.append(key, value);
     });
     
-    const response = await api.get(`/accounts/${id}/balance-history?${queryParams.toString()}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch account balance history');
+    const response = await axios.get(`${API_BASE_URL}/accounts/${id}/balance-history?${queryParams.toString()}`);
+    return response.data;
   },
 
   // Get account transactions
@@ -108,13 +80,8 @@ export const accountService = {
       if (value) queryParams.append(key, value.toString());
     });
     
-    const response = await api.get(`/accounts/${id}/transactions?${queryParams.toString()}`);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch account transactions');
+    const response = await axios.get(`${API_BASE_URL}/accounts/${id}/transactions?${queryParams.toString()}`);
+    return response.data;
   },
 
   // Transfer between accounts
@@ -127,13 +94,8 @@ export const accountService = {
     fromTransaction: any;
     toTransaction: any;
   }> {
-    const response = await api.post('/accounts/transfer', data);
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to transfer between accounts');
+    const response = await axios.post(`${API_BASE_URL}/accounts/transfer`, data);
+    return response.data;
   },
 
   // Get account summary
@@ -152,12 +114,7 @@ export const accountService = {
       date: string;
     }>;
   }> {
-    const response = await api.get('/accounts/summary');
-    
-    if (response.data.success) {
-      return response.data.data;
-    }
-    
-    throw new Error(response.data.message || 'Failed to fetch account summary');
+    const response = await axios.get(`${API_BASE_URL}/accounts/summary`);
+    return response.data;
   },
 };
